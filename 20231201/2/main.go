@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 )
 
@@ -13,10 +14,20 @@ func check(e error) {
 	}
 }
 
-func isNumber(r byte) (bool, int) {
-	num, err := strconv.Atoi(string(r))
+func isNumber(char byte, line string, forward bool) (bool, int) {
+	num, err := strconv.Atoi(string(char))
 	if err == nil {
 		return true, num
+	}
+	numbers := []string{"one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
+	for index, number := range numbers {
+		re, _ := regexp.Compile(number + "$")
+		if forward {
+			re, _ = regexp.Compile("^" + number)
+		}
+		if re.MatchString(line) {
+			return true, index + 1
+		}
 	}
 	return false, 0
 }
@@ -34,13 +45,15 @@ func main() {
 				break
 			}
 			if digits[0] == -1 {
-				isNum_first, num_first := isNumber(line[i])
+				forward := line
+				isNum_first, num_first := isNumber(line[i], forward[i:], true)
 				if isNum_first {
 					digits[0] = num_first
 				}
 			}
 			if digits[1] == -1 {
-				isNum_last, num_last := isNumber(line[len(line)-i-1])
+				backward := line
+				isNum_last, num_last := isNumber(line[len(line)-i-1], backward[:len(line)-i], false)
 				if isNum_last {
 					digits[1] = num_last
 				}
@@ -56,4 +69,3 @@ func main() {
 
 	f.Close()
 }
-
