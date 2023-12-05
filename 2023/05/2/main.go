@@ -80,27 +80,10 @@ func parseMaps(file *os.File) []Map {
 
 func browseMaps(maps []Map, seed Seed) int {
 	seedInt := seed.start
-	if seed.start == 82 {
-		fmt.Println("seedInt", seedInt)
-	}
 	for _, currentMap := range maps {
-
-		if seed.start == 82 {
-			fmt.Println("currentMap", currentMap.label)
-		}
 		for _, currentRoute := range currentMap.seedMap {
-			if seed.start == 82 {
-				fmt.Println(currentRoute)
-			}
 			if seedInt >= currentRoute.source && seedInt < currentRoute.source+currentRoute.rangeSize {
-				if seed.start == 82 {
-					fmt.Println(seedInt)
-					fmt.Println("=>")
-				}
 				seedInt = (seedInt - currentRoute.source) + currentRoute.destination
-				if seed.start == 82 {
-					fmt.Println(seedInt)
-				}
 				break
 			}
 		}
@@ -132,18 +115,14 @@ func main() {
 	lowestLocation := 0
 
 	for _, seed := range seeds {
-		fmt.Println(seed)
-		fmt.Println(seed.start, " ... ", seed.start+seed.rangeSize-1)
 		lowestLocation = browseMaps(result, seed)
 		for i := seed.start; i < seed.start+seed.rangeSize-1; i++ {
 			newSeed := Seed{i, 0}
-			end := browseMaps(result, newSeed)
-			if end < lowestLocation {
-				lowestLocation = end
+			endLocation := browseMaps(result, newSeed)
+			if endLocation < lowestLocation {
+				lowestLocation = endLocation
 			}
 		}
-		fmt.Println(lowestLocation)
-
 	}
-
+	fmt.Println(lowestLocation)
 }
