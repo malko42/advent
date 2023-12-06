@@ -14,40 +14,68 @@ func check(e error) {
 	}
 }
 
-type Data struct {
-	label   string
-	numbers []int
+type Scenario struct {
+	buttonPushed int
+	distanceRan  int
 }
 
-func parseData(path string) []Data {
+type Race struct {
+	timeAllowed     int
+	distanceToRun   int
+	winningScenarii []Scenario
+}
+
+func parseData(path string) []Race {
 	file, err := os.Open(path)
 	check(err)
-	result := []Data{}
+	races := []Race{}
 	fileScanner := bufio.NewScanner(file)
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
-		newData := Data{}
-		numbers := []int{}
-		var split = strings.Fields(line)
-		for _, stringNumber := range split {
-			number, err := strconv.Atoi(stringNumber)
-			check(err)
-			numbers = append(numbers, number)
+		split := strings.Split(line, ":")
+		if split[0] == "Time" {
+			for _, time := range strings.Fields(split[1]) {
+				newRace := Race{}
+				newRace.timeAllowed, err = strconv.Atoi(time)
+				check(err)
+				races = append(races, newRace)
+			}
 		}
 
-		newData.label = "lol"
-		newData.numbers = numbers
-
-		result = append(result, newData)
+		if split[0] == "Distance" {
+			for index, distance := range strings.Fields(split[1]) {
+				distanceInt, err := strconv.Atoi(distance)
+				check(err)
+				races[index].distanceToRun = distanceInt
+			}
+		}
 	}
 	file.Close()
-	return result
+	return races
+}
+
+func (r *Race) getWinningScenarii() []Scenario {
+	const SPEED = 1
+	scenarii := []Scenario{}
+	for i := 0; i < r.timeAllowed; i++ {
+		currentSpeed := SPEED * i
+		timeRemaining := r.timeAllowed - i
+		distanceRange := currentSpeed * timeRemaining
+		if distanceRange >= r.distanceToRun {
+			scenarii = append(scenarii, Scenario{buttonPushed: i, distanceRan: distanceRange})
+		}
+	}
+	return scenarii
 }
 
 func main() {
-	result := []Data{}
+	result := []Race{}
 	result = parseData("../data.txt")
+	factor := 1
 	for _, currentData := range result {
+		currentData.winningScenarii = currentData.getWinningScenarii()
+		factor *= len(currentData.winningScenarii)
 		fmt.Println(currentData)
 	}
+	fmt.Println(factor)
 }
