@@ -34,6 +34,10 @@ const (
 	FIVE_OF_A_KIND
 )
 
+func (h HandType) String() string {
+	return [...]string{"HIGH_CARD", "ONE_PAIR", "TWO_PAIR", "THREE_OF_A_KIND", "FULL_HOUSE", "FOUR_OF_A_KIND", "FIVE_OF_A_KIND"}[h]
+}
+
 func getHandType(cards string) HandType {
 	cardsCount := map[string]int{
 		"2": 0,
@@ -91,46 +95,42 @@ func getHandTypeWithJoker(cards string) HandType {
 		}
 	}
 	handType := getHandType(cards)
-	if cards == "JJJJJ" {
-		fmt.Println("JockerCount:", jockerCount)
-		fmt.Println("HandType:", handType)
+	if jockerCount == 4 {
+		handType = FIVE_OF_A_KIND
 	}
-	switch jockerCount {
-	case 0:
-		return handType
-	case 1:
+	if jockerCount == 3 {
+		switch handType {
+		case FULL_HOUSE:
+			handType = FIVE_OF_A_KIND
+		case THREE_OF_A_KIND:
+			handType = FOUR_OF_A_KIND
+		}
+	}
+
+	if jockerCount == 2 {
+		switch handType {
+		case ONE_PAIR:
+			handType = THREE_OF_A_KIND
+		case TWO_PAIR:
+			handType = FOUR_OF_A_KIND
+		case FULL_HOUSE:
+			handType = FIVE_OF_A_KIND
+		}
+	}
+
+	if jockerCount == 1 {
 		switch handType {
 		case HIGH_CARD:
-			return ONE_PAIR
+			handType = ONE_PAIR
 		case ONE_PAIR:
-			return THREE_OF_A_KIND
+			handType = THREE_OF_A_KIND
 		case TWO_PAIR:
-			return FULL_HOUSE
+			handType = FULL_HOUSE
 		case THREE_OF_A_KIND:
-			return FOUR_OF_A_KIND
+			handType = FOUR_OF_A_KIND
+		case FOUR_OF_A_KIND:
+			handType = FIVE_OF_A_KIND
 		}
-	case 2:
-		switch handType {
-		case ONE_PAIR:
-			return THREE_OF_A_KIND
-		case TWO_PAIR:
-			return FOUR_OF_A_KIND
-		case FULL_HOUSE:
-			return FIVE_OF_A_KIND
-		}
-	case 3:
-		switch handType {
-		case FULL_HOUSE:
-			return FIVE_OF_A_KIND
-		case THREE_OF_A_KIND:
-			return FOUR_OF_A_KIND
-		}
-	case 4:
-		return FIVE_OF_A_KIND
-	case 5:
-		return FIVE_OF_A_KIND
-	default:
-		return handType
 	}
 	return handType
 }
@@ -169,16 +169,6 @@ func cardScore(card string) int {
 }
 
 func compareHands(hand1 Hand, hand2 Hand) int {
-	return compareGeneric(hand1, hand2)
-}
-
-func compareGeneric(hand1 Hand, hand2 Hand) int {
-	if hand1.trueHandType > hand2.trueHandType {
-		return 1
-	}
-	if hand1.trueHandType < hand2.trueHandType {
-		return -1
-	}
 	hand1Score := cardScore(string(hand1.cards[0]))
 	hand2Score := cardScore(string(hand2.cards[0]))
 
@@ -246,10 +236,6 @@ func main() {
 			score += rank * hand.bid
 			rank++
 		}
-	}
-
-	for _, handsByType := range sortedHandsByType {
-		fmt.Println(handsByType)
 	}
 
 	fmt.Println("Score:", score)
