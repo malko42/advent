@@ -21,39 +21,30 @@ func isStart(label string) bool {
 	return string(label[2]) == "A"
 }
 
-func hasReachedExit(currents []string) bool {
-	// every current is an exit
-	status := true
-	for _, current := range currents {
-		status = status && isExit(current)
+func findFirstExit(start string, instructions string, mapData map[string][]string) int {
+	counter := 0
+	for !isExit(start) {
+		for _, instruction := range instructions {
+			if instruction == 'L' {
+				start = mapData[start][0]
+			} else {
+				start = mapData[start][1]
+			}
+			counter++
+		}
 	}
-	return status
+	return counter
 }
 
 func findExit(instructions string, mapData map[string][]string) int {
 	var currents = getStartingNodes(mapData)
-	counter := 0
-	fastestToExit := make([]int, len(currents))
-	for !hasReachedExit(currents) {
-		path := strings.Split(instructions, "")
-		for _, instruction := range path {
-			counter++
-			for index, current := range currents {
-				if isExit(current) {
-					if fastestToExit[index] == 0 {
-						fastestToExit[index] = counter
-					}
-				}
-				if instruction == "L" {
-					currents[index] = mapData[current][0]
-				}
-				if instruction == "R" {
-					currents[index] = mapData[current][1]
-				}
-			}
-		}
+	stepsToZ := make([]int, len(currents))
+
+	for index, current := range currents {
+		stepsToZ[index] = findFirstExit(current, instructions, mapData)
 	}
-	return counter
+
+	return LCM(stepsToZ)
 }
 
 func getStartingNodes(mapData map[string][]string) []string {
@@ -101,13 +92,11 @@ func GCD(a, b int) int {
 }
 
 // find Least Common Multiple (LCM) via GCD
-func LCM(a, b int, integers ...int) int {
-	result := a * b / GCD(a, b)
-
-	for i := 0; i < len(integers); i++ {
-		result = LCM(result, integers[i])
+func LCM(numbers []int) int {
+	result := numbers[0] * numbers[1] / GCD(numbers[0], numbers[1])
+	for i := 2; i < len(numbers); i++ {
+		result = result * numbers[i] / GCD(result, numbers[i])
 	}
-
 	return result
 }
 
@@ -115,5 +104,4 @@ func main() {
 	path, result := parseData("../data.txt")
 	// path, result := parseData("sample.txt")
 	fmt.Println(findExit(path, result))
-	// fmt.Println(LCM(11310, 20777, 17622, 13940, 15518, 20778))
 }
