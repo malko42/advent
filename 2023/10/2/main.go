@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -28,13 +29,20 @@ type PipeMap struct {
 
 func (p PipeMap) String() string {
 	const colorRed = "\033[0;31m"
+	const colorYellow = "\033[1;33m"
 	const colorNone = "\033[0m"
+	max := p.loop[len(p.loop)/2]
+
 	print := ""
 	for _, row := range p.tiles {
 		print += "["
 		for _, tile := range row {
 			if tile.hasBeenVisited {
-				print += colorRed
+				if tile.x == max.x && tile.y == max.y {
+					print += colorYellow
+				} else {
+					print += colorRed
+				}
 			} else {
 				print += colorNone
 			}
@@ -43,7 +51,7 @@ func (p PipeMap) String() string {
 		print += "]\n"
 	}
 	print += fmt.Sprintf("Start: X = %v Y = %v\n", p.start.x, p.start.y)
-	print += fmt.Sprintf("Furthest point from start: %v\n", len(p.loop)/2)
+	print += fmt.Sprintf("Furthest point from start: X = %v Y= %v at index %v\n", max.x, max.y, len(p.loop)/2)
 	return print
 }
 
@@ -52,80 +60,77 @@ func (t Tile) isStart() bool {
 }
 
 func canGoRight(current Tile, pipeMap PipeMap) bool {
-	next := pipeMap.tiles[current.y][current.x+1]
 	return current.x < len(pipeMap.tiles[current.y])-1 &&
-	!next.hasBeenVisited &&
-			(next.label == "-" ||
-				next.label == "J" ||
-				next.label == "7") &&
-			(current.label == "S" ||
-				current.label == "-" ||
-				current.label == "L" ||
-				current.label == "F")
+		(!pipeMap.tiles[current.y][current.x+1].hasBeenVisited ||
+			(pipeMap.tiles[current.y][current.x+1].hasBeenVisited && pipeMap.tiles[current.y][current.x+1].isStart())) &&
+		(pipeMap.tiles[current.y][current.x+1].label == "-" ||
+			pipeMap.tiles[current.y][current.x+1].label == "J" ||
+			pipeMap.tiles[current.y][current.x+1].label == "S" ||
+			pipeMap.tiles[current.y][current.x+1].label == "7") &&
+		(current.label == "S" ||
+			current.label == "-" ||
+			current.label == "L" ||
+			current.label == "F")
 }
 
 func canGoLeft(current Tile, pipeMap PipeMap) bool {
-	next := pipeMap.tiles[current.y][current.x-1]
 	return current.x > 0 &&
-	!next.hasBeenVisited &&
-			(next.label == "-" ||
-				next.label == "F" ||
-				next.label == "L") &&
-			(current.label == "S" ||
-				current.label == "-" ||
-				current.label == "J" ||
-				current.label == "7")
+		(!pipeMap.tiles[current.y][current.x-1].hasBeenVisited || (pipeMap.tiles[current.y][current.x-1].hasBeenVisited && pipeMap.tiles[current.y][current.x-1].isStart())) &&
+		(pipeMap.tiles[current.y][current.x-1].label == "-" ||
+			pipeMap.tiles[current.y][current.x-1].label == "F" ||
+			pipeMap.tiles[current.y][current.x-1].label == "S" ||
+			pipeMap.tiles[current.y][current.x-1].label == "L") &&
+		(current.label == "S" ||
+			current.label == "-" ||
+			current.label == "J" ||
+			current.label == "7")
 }
 
 func canGoDown(current Tile, pipeMap PipeMap) bool {
-	next := pipeMap.tiles[current.y+1][current.x]
 	return current.y < len(pipeMap.tiles)-1 &&
-	!next.hasBeenVisited &&
-			(next.label == "|" ||
-				next.label == "J" ||
-				next.label == "L") &&
-			(current.label == "S" ||
-				current.label == "|" ||
-				current.label == "F" ||
-				current.label == "7")
+		(!pipeMap.tiles[current.y+1][current.x].hasBeenVisited || (pipeMap.tiles[current.y+1][current.x].hasBeenVisited && pipeMap.tiles[current.y+1][current.x].isStart())) &&
+		(pipeMap.tiles[current.y+1][current.x].label == "|" ||
+			pipeMap.tiles[current.y+1][current.x].label == "J" ||
+			pipeMap.tiles[current.y+1][current.x].label == "S" ||
+			pipeMap.tiles[current.y+1][current.x].label == "L") &&
+		(current.label == "S" ||
+			current.label == "|" ||
+			current.label == "F" ||
+			current.label == "7")
 }
 
 func canGoUp(current Tile, pipeMap PipeMap) bool {
-	next := pipeMap.tiles[current.y-1][current.x]
 	return current.y > 0 &&
-	!next.hasBeenVisited &&
-			(next.label == "|" ||
-				next.label == "F" ||
-				next.label == "7") &&
-			(current.label == "S" ||
-				current.label == "|" ||
-				current.label == "J" ||
-				current.label == "L")
+		(!pipeMap.tiles[current.y-1][current.x].hasBeenVisited || (pipeMap.tiles[current.y-1][current.x].hasBeenVisited && pipeMap.tiles[current.y-1][current.x].isStart())) &&
+		(pipeMap.tiles[current.y-1][current.x].label == "|" ||
+			pipeMap.tiles[current.y-1][current.x].label == "F" ||
+			pipeMap.tiles[current.y-1][current.x].label == "S" ||
+			pipeMap.tiles[current.y-1][current.x].label == "7") &&
+		(current.label == "S" ||
+			current.label == "|" ||
+			current.label == "J" ||
+			current.label == "L")
 }
 
-func findNext(current Tile, p *PipeMap) Tile {
+func findNext(current Tile, p *PipeMap) (Tile, error) {
 
 	if canGoRight(current, *p) {
 		p.tiles[current.y][current.x].hasBeenVisited = true
-		return p.tiles[current.y][current.x+1]
+		return p.tiles[current.y][current.x+1], nil
 	}
 	if canGoDown(current, *p) {
-		fmt.Println("Going down!")
 		p.tiles[current.y][current.x].hasBeenVisited = true
-		return p.tiles[current.y+1][current.x]
+		return p.tiles[current.y+1][current.x], nil
 	}
 	if canGoLeft(current, *p) {
-		fmt.Println("Going left!")
 		p.tiles[current.y][current.x].hasBeenVisited = true
-		return p.tiles[current.y][current.x-1]
+		return p.tiles[current.y][current.x-1], nil
 	}
 	if canGoUp(current, *p) {
-		fmt.Println("Going up!")
 		p.tiles[current.y][current.x].hasBeenVisited = true
-		return p.tiles[current.y-1][current.x]
+		return p.tiles[current.y-1][current.x], nil
 	}
-	fmt.Println("Going nowhere")
-	return Tile{"X", -1, -1, false}
+	return Tile{"X", -1, -1, false}, errors.New("No valid path found")
 }
 
 func followLoop(p *PipeMap) []Tile {
@@ -133,9 +138,11 @@ func followLoop(p *PipeMap) []Tile {
 	var path []Tile
 	path = append(path, current)
 	for {
-		current = findNext(current, p)
-		fmt.Println(current)
-		if current.isStart(){
+		var err error
+		current, err = findNext(current, p)
+		check(err)
+
+		if current.isStart() {
 			break
 		}
 		path = append(path, current)
@@ -175,4 +182,3 @@ func main() {
 	// result := parseData("../sample.txt")
 	fmt.Println(result)
 }
-
