@@ -113,21 +113,24 @@ func canGoUp(current Tile, pipeMap PipeMap) bool {
 }
 
 func findNext(current Tile, p *PipeMap) (Tile, error) {
-
 	if canGoRight(current, *p) {
 		p.tiles[current.y][current.x].hasBeenVisited = true
+		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
 		return p.tiles[current.y][current.x+1], nil
 	}
 	if canGoDown(current, *p) {
 		p.tiles[current.y][current.x].hasBeenVisited = true
+		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
 		return p.tiles[current.y+1][current.x], nil
 	}
 	if canGoLeft(current, *p) {
 		p.tiles[current.y][current.x].hasBeenVisited = true
+		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
 		return p.tiles[current.y][current.x-1], nil
 	}
 	if canGoUp(current, *p) {
 		p.tiles[current.y][current.x].hasBeenVisited = true
+		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
 		return p.tiles[current.y-1][current.x], nil
 	}
 	return Tile{"X", -1, -1, false}, errors.New("No valid path found")
@@ -149,6 +152,28 @@ func followLoop(p *PipeMap) []Tile {
 	}
 	return path
 
+}
+
+func getPrettyTile(tile Tile) Tile {
+	if tile.label == "L" {
+		tile.label = "└"
+	}
+	if tile.label == "F" {
+		tile.label = "┌"
+	}
+	if tile.label == "J" {
+		tile.label = "┘"
+	}
+	if tile.label == "7" {
+		tile.label = "┐"
+	}
+	if tile.label == "|" {
+		tile.label = "│"
+	}
+	if tile.label == "-" {
+		tile.label = "─"
+	}
+	return tile
 }
 
 func parseData(path string) PipeMap {
