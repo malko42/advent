@@ -128,16 +128,6 @@ func canGoUp(current Tile, pipeMap PipeMap) bool {
 }
 
 func findNext(current Tile, p *PipeMap) (Tile, error) {
-	if canGoRight(current, *p) {
-		p.tiles[current.y][current.x].hasBeenVisited = true
-		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
-		return p.tiles[current.y][current.x+1], nil
-	}
-	if canGoDown(current, *p) {
-		p.tiles[current.y][current.x].hasBeenVisited = true
-		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
-		return p.tiles[current.y+1][current.x], nil
-	}
 	if canGoLeft(current, *p) {
 		p.tiles[current.y][current.x].hasBeenVisited = true
 		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
@@ -147,6 +137,16 @@ func findNext(current Tile, p *PipeMap) (Tile, error) {
 		p.tiles[current.y][current.x].hasBeenVisited = true
 		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
 		return p.tiles[current.y-1][current.x], nil
+	}
+	if canGoRight(current, *p) {
+		p.tiles[current.y][current.x].hasBeenVisited = true
+		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
+		return p.tiles[current.y][current.x+1], nil
+	}
+	if canGoDown(current, *p) {
+		p.tiles[current.y][current.x].hasBeenVisited = true
+		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
+		return p.tiles[current.y+1][current.x], nil
 	}
 	return Tile{"X", -1, -1, false, 0}, errors.New("No valid path found")
 }
@@ -194,37 +194,57 @@ func getPrettyTile(tile Tile) Tile {
 func getLeftHandTile(pipeMap PipeMap, prev Tile, current Tile) (tiles []Tile, err error) {
 	xDirection := current.x - prev.x
 	yDirection := current.y - prev.y
-	if xDirection == 1 && current.y > 0 {
-		return []Tile{pipeMap.tiles[current.y-1][current.x]}, nil
+
+	res := []Tile{}
+	if xDirection == 1 && (current.label == "-" || current.label == "7") && current.y > 0 {
+		res = append(res, pipeMap.tiles[current.y-1][current.x])
+	} else if xDirection == -1 && (current.label == "-" || current.label == "L") && current.y < len(pipeMap.tiles)-1 {
+		res = append(res, pipeMap.tiles[current.y+1][current.x])
+	} else if yDirection == 1 && (current.label == "|" || current.label == "J") && current.x < len(pipeMap.tiles[current.y])-1 {
+		res = append(res, pipeMap.tiles[current.y][current.x+1])
+	} else if yDirection == -1 && (current.label == "|" || current.label == "F") && current.x > 0 {
+		res = append(res, pipeMap.tiles[current.y][current.x-1])
 	}
-	if xDirection == -1 && current.y < len(pipeMap.tiles)-1 {
-		return []Tile{pipeMap.tiles[current.y+1][current.x]}, nil
+
+	if xDirection == 1 && (current.label == "7") && current.x < len(pipeMap.tiles[current.y])-1 {
+		res = append(res, pipeMap.tiles[current.y][current.x+1])
+	} else if xDirection == -1 && (current.label == "L") && current.x > 0 {
+		res = append(res, pipeMap.tiles[current.y][current.x-1])
+	} else if yDirection == 1 && (current.label == "J") && current.y < len(pipeMap.tiles)-1 {
+		res = append(res, pipeMap.tiles[current.y+1][current.x])
+	} else if yDirection == -1 && (current.label == "F") && current.y > 0 {
+		res = append(res, pipeMap.tiles[current.y-1][current.x])
 	}
-	if yDirection == 1 && current.x < len(pipeMap.tiles[current.y])-1 {
-		return []Tile{pipeMap.tiles[current.y][current.x+1]}, nil
-	}
-	if yDirection == -1 && current.x > 0 {
-		return []Tile{pipeMap.tiles[current.y][current.x-1]}, nil
-	}
-	return []Tile{}, errors.New("No valid left hand tile found")
+
+	return res, nil
 }
 
 func getRightHandTile(pipeMap PipeMap, prev Tile, current Tile) (tiles []Tile, err error) {
 	xDirection := current.x - prev.x
 	yDirection := current.y - prev.y
-	if xDirection == 1 && current.y < len(pipeMap.tiles)-1 {
-		return []Tile{pipeMap.tiles[current.y+1][current.x]}, nil
+
+	res := []Tile{}
+	if xDirection == 1 && (current.label == "-" || current.label == "J") && current.y < len(pipeMap.tiles)-1 {
+		res = append(res, pipeMap.tiles[current.y+1][current.x])
+	} else if xDirection == -1 && (current.label == "-" || current.label == "F") && current.y > 0 {
+		res = append(res, pipeMap.tiles[current.y-1][current.x])
+	} else if yDirection == 1 && (current.label == "|" || current.label == "7") && current.x > 0 {
+		res = append(res, pipeMap.tiles[current.y][current.x-1])
+	} else if yDirection == -1 && (current.label == "|" || current.label == "L") && current.x < len(pipeMap.tiles[current.y])-1 {
+		res = append(res, pipeMap.tiles[current.y][current.x+1])
 	}
-	if xDirection == -1 && current.y > 0 {
-		return []Tile{pipeMap.tiles[current.y-1][current.x]}, nil
+
+	if xDirection == 1 && (current.label == "J") && current.x < len(pipeMap.tiles[current.y])-1 {
+		res = append(res, pipeMap.tiles[current.y][current.x+1])
+	} else if xDirection == -1 && (current.label == "F") && current.x > 0 {
+		res = append(res, pipeMap.tiles[current.y][current.x-1])
+	} else if yDirection == 1 && (current.label == "7") && current.y < len(pipeMap.tiles)-1 {
+		res = append(res, pipeMap.tiles[current.y+1][current.x])
+	} else if yDirection == -1 && (current.label == "L") && current.y > 0 {
+		res = append(res, pipeMap.tiles[current.y-1][current.x])
 	}
-	if yDirection == 1 && current.x > 0 {
-		return []Tile{pipeMap.tiles[current.y][current.x-1]}, nil
-	}
-	if yDirection == -1 && current.x < len(pipeMap.tiles[current.y])-1 {
-		return []Tile{pipeMap.tiles[current.y][current.x+1]}, nil
-	}
-	return []Tile{}, errors.New("No valid right hand tile found")
+
+	return res, nil
 }
 
 func parseData(path string) PipeMap {
