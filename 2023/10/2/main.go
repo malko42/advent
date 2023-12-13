@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -19,6 +20,7 @@ type Tile struct {
 	x              int
 	y              int
 	hasBeenVisited bool
+	group          int
 }
 
 type PipeMap struct {
@@ -31,12 +33,18 @@ func (p PipeMap) String() string {
 	const colorRed = "\033[0;31m"
 	const colorYellow = "\033[1;33m"
 	const colorNone = "\033[0m"
+	const colorGreen = "\033[0;32m"
+	const colorBlue = "\033[0;34m"
+	const colorCyan = "\033[0;36m"
+	const colorPurple = "\033[0;35m"
+	const colorOrange = "\033[0;33m"
 	max := p.loop[len(p.loop)/2]
 
 	print := ""
 	for _, row := range p.tiles {
 		print += "["
 		for _, tile := range row {
+
 			if tile.hasBeenVisited {
 				if tile.x == max.x && tile.y == max.y {
 					print += colorYellow
@@ -44,9 +52,16 @@ func (p PipeMap) String() string {
 					print += colorRed
 				}
 			} else {
-				print += colorNone
+				if tile.group == 1 {
+					print += colorGreen
+				} else if tile.group == 2 {
+					print += colorPurple
+				} else {
+					print += colorNone
+				}
 			}
 			print += fmt.Sprintf("%v ", tile.label)
+			print += colorNone
 		}
 		print += "]\n"
 	}
@@ -133,7 +148,7 @@ func findNext(current Tile, p *PipeMap) (Tile, error) {
 		p.tiles[current.y][current.x] = getPrettyTile(p.tiles[current.y][current.x])
 		return p.tiles[current.y-1][current.x], nil
 	}
-	return Tile{"X", -1, -1, false}, errors.New("No valid path found")
+	return Tile{"X", -1, -1, false, 0}, errors.New("No valid path found")
 }
 
 func followLoop(p *PipeMap) []Tile {
@@ -176,6 +191,42 @@ func getPrettyTile(tile Tile) Tile {
 	return tile
 }
 
+func getLeftHandTile(pipeMap PipeMap, prev Tile, current Tile) (tiles []Tile, err error) {
+	xDirection := current.x - prev.x
+	yDirection := current.y - prev.y
+	if xDirection == 1 && current.y > 0 {
+		return []Tile{pipeMap.tiles[current.y-1][current.x]}, nil
+	}
+	if xDirection == -1 && current.y < len(pipeMap.tiles)-1 {
+		return []Tile{pipeMap.tiles[current.y+1][current.x]}, nil
+	}
+	if yDirection == 1 && current.x < len(pipeMap.tiles[current.y])-1 {
+		return []Tile{pipeMap.tiles[current.y][current.x+1]}, nil
+	}
+	if yDirection == -1 && current.x > 0 {
+		return []Tile{pipeMap.tiles[current.y][current.x-1]}, nil
+	}
+	return []Tile{}, errors.New("No valid left hand tile found")
+}
+
+func getRightHandTile(pipeMap PipeMap, prev Tile, current Tile) (tiles []Tile, err error) {
+	xDirection := current.x - prev.x
+	yDirection := current.y - prev.y
+	if xDirection == 1 && current.y < len(pipeMap.tiles)-1 {
+		return []Tile{pipeMap.tiles[current.y+1][current.x]}, nil
+	}
+	if xDirection == -1 && current.y > 0 {
+		return []Tile{pipeMap.tiles[current.y-1][current.x]}, nil
+	}
+	if yDirection == 1 && current.x > 0 {
+		return []Tile{pipeMap.tiles[current.y][current.x-1]}, nil
+	}
+	if yDirection == -1 && current.x < len(pipeMap.tiles[current.y])-1 {
+		return []Tile{pipeMap.tiles[current.y][current.x+1]}, nil
+	}
+	return []Tile{}, errors.New("No valid right hand tile found")
+}
+
 func parseData(path string) PipeMap {
 	file, err := os.Open(path)
 	check(err)
@@ -188,7 +239,7 @@ func parseData(path string) PipeMap {
 		lineOfTiles := []Tile{}
 		for i, char := range split {
 			split[i] = char
-			newTile := Tile{char, i, lineCount, false}
+			newTile := Tile{char, i, lineCount, false, 0}
 			if char == "S" {
 				newMap.start = &newTile
 			}
@@ -202,8 +253,89 @@ func parseData(path string) PipeMap {
 	return newMap
 }
 
+func getNeighbours(pipeMap PipeMap, tile Tile) []Tile {
+	neighbours := []Tile{}
+	if tile.x > 0 && !pipeMap.tiles[tile.y][tile.x-1].hasBeenVisited {
+		neighbours = append(neighbours, pipeMap.tiles[tile.y][tile.x-1])
+	}
+	if tile.x < len(pipeMap.tiles[tile.y])-1 && !pipeMap.tiles[tile.y][tile.x+1].hasBeenVisited {
+		neighbours = append(neighbours, pipeMap.tiles[tile.y][tile.x+1])
+	}
+	if tile.y > 0 && !pipeMap.tiles[tile.y-1][tile.x].hasBeenVisited {
+		neighbours = append(neighbours, pipeMap.tiles[tile.y-1][tile.x])
+	}
+	if tile.y < len(pipeMap.tiles)-1 && !pipeMap.tiles[tile.y+1][tile.x].hasBeenVisited {
+		neighbours = append(neighbours, pipeMap.tiles[tile.y+1][tile.x])
+	}
+	return neighbours
+}
+
+func floodFill(pipeMap *PipeMap, loop []Tile, start Tile, color int) {
+	result := []Tile{}
+	result = append(result, start)
+	pipeMap.tiles[start.y][start.x].group = color
+	for len(result) > 0 {
+		neigh := getNeighbours(*pipeMap, result[0])
+		for _, n := range neigh {
+			if slices.IndexFunc(loop, func(t Tile) bool { return hasSamePosition(t, n) }) == -1 && n.group != color {
+				result = append(result, n)
+				pipeMap.tiles[n.y][n.x].group = color
+			}
+		}
+		result = result[1:]
+	}
+}
+
+func hasSamePosition(a Tile, b Tile) bool {
+	return a.x == b.x && a.y == b.y
+}
+
 func main() {
 	result := parseData("../data.txt")
 	// result := parseData("../sample.txt")
+	previousTile := result.loop[0]
+	rightHandArray := []Tile{}
+	leftHandArray := []Tile{}
+	for i := 1; i < len(result.loop); i++ {
+		listRight, err := getRightHandTile(result, previousTile, result.loop[i])
+		if err == nil {
+			for _, tile := range listRight {
+				if !tile.hasBeenVisited {
+					rightHandArray = append(rightHandArray, tile)
+				}
+			}
+		}
+		listLeft, err := getLeftHandTile(result, previousTile, result.loop[i])
+		if err == nil {
+			for _, tile := range listLeft {
+				if !tile.hasBeenVisited {
+					leftHandArray = append(leftHandArray, tile)
+				}
+			}
+		}
+		previousTile = result.loop[i]
+	}
+
+	for _, tile := range leftHandArray {
+		floodFill(&result, result.loop, tile, 2)
+	}
+	for _, tile := range rightHandArray {
+		floodFill(&result, result.loop, tile, 1)
+	}
+
+	grp1Count := 0
+	grp2Count := 0
+	for _, line := range result.tiles {
+		for _, tile := range line {
+			if tile.group == 1 {
+				grp1Count++
+			}
+			if tile.group == 2 {
+				grp2Count++
+			}
+		}
+	}
 	fmt.Println(result)
+	fmt.Println(grp1Count)
+	fmt.Println(grp2Count)
 }
